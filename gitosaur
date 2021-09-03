@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# wrapper around stagit
+
+# repo_dir=/var/www/git
+repo_dir=~/Temp/stagit-test/bare
+html_dir=~/Temp/stagit-test/html
+
+help() {
+	printf 'usage: gitosaur help|new-repo|del-repo'
+}
+
+# usage: genindex repo_path
+genindex() {
+    stagit-index `ls -d ${repo_dir}/*` > "${html_dir}/index.html"
+}
+
+# usage: ask ask_message
+ask() {
+    read -p "$1 [y/n] " ans
+    [ "$ans" != "y" ] && return 1
+    return 0
+}
+
+newrepo() {
+    [ -z "$1" ] && echo "newrepo requires name argument" && exit 1
+    mkdir "${repo_dir}/$1"
+    cd "${repo_dir}/$1"
+    git init --bare 
+    genindex
+}
+
+delrepo() {
+    [ -z "$1" ] && echo "delrepo requires name argument" && exit 1
+    ask "Are you sure you wish to remove the repo?" || exit 0
+    rm -rf "${repo_dir}/$1"
+    genindex
+}
+
+case $1 in
+    new-repo) newrepo $2;;
+    del-repo) delrepo $2;;
+    help|*) help;;
+esac
+
