@@ -1,18 +1,19 @@
 #!/bin/sh
 
-# wrapper around stagit
+# simple wrapper around stagit
 
 # repo_dir=/var/www/git
-repo_dir=~/Temp/stagit-test/bare
-html_dir=~/Temp/stagit-test/html
+site_url=
+repo_dir=/var/www/git/repos
+html_dir=/var/www/git/html
 
 help() {
-	printf 'usage: gitosaur help|new-repo|del-repo'
+	printf 'usage: gitosaur help|init|new-repo|del-repo|new-organization|del-organization'
 }
 
 # usage: genindex repo_path
 genindex() {
-    stagit-index `ls -d ${repo_dir}/*` > "${html_dir}/index.html"
+    stagit-index `ls -d ${repo_dir}/* | grep ".git/$"` > "${html_dir}/index.html"
 }
 
 # usage: ask ask_message
@@ -22,11 +23,30 @@ ask() {
     return 0
 }
 
+init() {
+    mkdir "$repo_dir" "$html_dir"
+}
+
 newrepo() {
+    # might need to run `git update-server-info` after adding new repo
     [ -z "$1" ] && echo "newrepo requires name argument" && exit 1
-    mkdir "${repo_dir}/$1"
-    cd "${repo_dir}/$1"
+    mkdir -p "${repo_dir}/$1.git" "${html_dir}/$1.git"
+    cd "${repo_dir}/$1.git"
     git init --bare 
+
+    # enable dumb HTTP protocol
+cat > hooks/post-update <<- EOF
+	#!/bin/sh
+	
+	(
+	cd "${html_dir}/$1.git"
+	stagit "${repo_dir}/$1.git"
+	)
+
+	exec git update-server-info
+EOF
+
+
     genindex
 }
 
@@ -37,9 +57,16 @@ delrepo() {
     genindex
 }
 
+#neworganization() {
+#}
+#
+#delorganization() {
+#}
+
 case $1 in
-    new-repo) newrepo $2;;
-    del-repo) delrepo $2;;
+    init) init;;
+    new-repo) newrepo $2 $3;;
+    del-repo) delrepo $2 $3;;
     help|*) help;;
 esac
 
