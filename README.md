@@ -19,7 +19,7 @@ Next, we need to configure our webserver to use git's [smart http](https://git-s
 Furthermore, we also want to have the git clone url to be the same as the one to view the html page. Using nginx, this can be accomplished
 like so (you will also need to install fcgiwrap):
 ```
-    location ~ (/.*\.git/(HEAD|info/refs|objects/info/.*|git-(upload|recieve)-pack)) {
+location ~ (/.*\.git/(HEAD|info/refs|objects/info/.*|git-(upload|recieve)-pack)) {
     fastcgi_pass unix:/var/run/fcgiwrap.socket;
     include fastcgi_params;
     fastcgi_param SCRIPT_FILENAME     /usr/lib/git-core/git-http-backend;

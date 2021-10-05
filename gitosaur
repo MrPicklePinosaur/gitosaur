@@ -2,10 +2,12 @@
 
 # simple wrapper around stagit
 
-# repo_dir=/var/www/git
-site_url=
-repo_dir=/var/www/git/repos
-html_dir=/var/www/git/html
+site_url=https://git.danieliu.xyz
+repo_owner=pinosaur
+repo_base=/var/www/git/repos
+html_base=/var/www/git/html
+
+self="$(readlink -f $0 | xargs dirname)"
 
 help() {
 	printf 'usage: gitosaur help|init|new-repo|del-repo|new-organization|del-organization'
@@ -13,7 +15,7 @@ help() {
 
 # usage: genindex repo_path
 genindex() {
-    stagit-index `ls -d ${repo_dir}/* | grep ".git/$"` > "${html_dir}/index.html"
+    stagit-index `ls -d ${repo_base}/* | grep '.git/'` > "${html_base}/index.html"
 }
 
 # usage: ask ask_message
@@ -24,28 +26,36 @@ ask() {
 }
 
 init() {
-    mkdir "$repo_dir" "$html_dir"
+    mkdir "$repo_base" "$html_base"
 }
 
 newrepo() {
     # might need to run `git update-server-info` after adding new repo
     [ -z "$1" ] && echo "newrepo requires name argument" && exit 1
-    mkdir -p "${repo_dir}/$1.git" "${html_dir}/$1.git"
-    cd "${repo_dir}/$1.git"
+
+    repo_path="${repo_base}/$1.git"
+    html_path="${html_base}/$1"
+
+    mkdir -p "${repo_path}" "${html_path}"
+    cd "${repo_path}"
     git init --bare 
 
     # enable dumb HTTP protocol
 cat > hooks/post-update <<- EOF
 	#!/bin/sh
-	
 	(
-	cd "${html_dir}/$1.git"
-	stagit "${repo_dir}/$1.git"
+	cd "${html_path}"
+	stagit "${repo_path}"
 	)
-
 	exec git update-server-info
 EOF
+    chmod +x hooks/post-update
 
+    echo "${site_url}/$1.git" > url
+    echo "${repo_owner}" > owner
+
+    ln -s "${self}/assets/style.css" "${repo_path}"
+    ln -s "${self}/assets/logo.png" "${repo_path}"
 
     genindex
 }
@@ -53,7 +63,7 @@ EOF
 delrepo() {
     [ -z "$1" ] && echo "delrepo requires name argument" && exit 1
     ask "Are you sure you wish to remove the repo?" || exit 0
-    rm -rf "${repo_dir}/$1"
+    rm -rf "${repo_base}/$1"
     genindex
 }
 
@@ -65,6 +75,7 @@ delrepo() {
 
 case $1 in
     init) init;;
+    gen-index) genindex;;
     new-repo) newrepo $2 $3;;
     del-repo) delrepo $2 $3;;
     help|*) help;;
